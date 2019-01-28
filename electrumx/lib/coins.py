@@ -2256,18 +2256,9 @@ class Pivx(Coin):
     RPC_PORT = 51473
 
     @classmethod
-    def static_header_offset(cls, height):
-        assert cls.STATIC_BLOCK_HEADERS
-        if height >= cls.HDR_V4_HEIGHT:
-            relative_v4_offset = (height - cls.HDR_V4_HEIGHT) * cls.HDR_V4_SIZE
-            return cls.HDR_V4_START_OFFSET + relative_v4_offset
-        else:
-            return height * cls.BASIC_HEADER_SIZE
-
-    @classmethod
     def header_hash(cls, header):
         version, = util.unpack_le_uint32_from(header)
-        if version >= 4:
+        if version >= 6:
             return super().header_hash(header)
         else:
             import quark_hash
@@ -2282,35 +2273,51 @@ class BTCONE(Coin):
     XPRV_VERBYTES = bytes.fromhex("0221312B")
     P2PKH_VERBYTE = bytes.fromhex("55")
     P2SH_VERBYTES = [bytes.fromhex("0d")]
-    WIF_BYTE = bytes.fromhex("d5")
+    WIF_BYTE = bytes.fromhex("d4")
     GENESIS_HASH = ('00000cefd7a654f1e0cca1f84e34ed12197026e449216c46ebdaaf3befe02861')
+    RPC_PORT = 51473
+    HEADER_HASH = None
     BASIC_HEADER_SIZE = 80
-    HDR_V4_SIZE = 112
-    HDR_V4_HEIGHT = 863787
-    HDR_V4_START_OFFSET = HDR_V4_HEIGHT * BASIC_HEADER_SIZE
+    HDR_V5_SIZE = 112
+    HDR_V5_HEIGHT = 1
+    HDR_V5_START_OFFSET = HDR_V5_HEIGHT * BASIC_HEADER_SIZE
     TX_COUNT = 2930206
     TX_COUNT_HEIGHT = 1299212
     TX_PER_BLOCK = 2
-    RPC_PORT = 51473
+    RPC_PORT = 51473 
 
     @classmethod
     def static_header_offset(cls, height):
         assert cls.STATIC_BLOCK_HEADERS
-        if height >= cls.HDR_V4_HEIGHT:
-            relative_v4_offset = (height - cls.HDR_V4_HEIGHT) * cls.HDR_V4_SIZE
-            return cls.HDR_V4_START_OFFSET + relative_v4_offset
+        if height >= cls.HDR_V5_HEIGHT:
+            relative_v5_offset = (height - cls.HDR_V5_HEIGHT) * cls.HDR_V5_SIZE
+            return cls.HDR_V5_START_OFFSET + relative_v5_offset
         else:
             return height * cls.BASIC_HEADER_SIZE
 
     @classmethod
     def header_hash(cls, header):
-        version, = util.unpack_le_uint32_from(header)
-        if version >= 4:
-            return super().header_hash(header)
-        else:
-            import quark_hash
-            return quark_hash.getPoWHash(header)
+        if cls.HEADER_HASH is None:
+            import scrypt
+            cls.HEADER_HASH = lambda x: scrypt.hash(x, x, 1024, 1, 1, 32)
 
+        version, = util.unpack_le_uint32_from(header)
+
+        import quark_hash
+      
+      #  print ('------------------------------------------------------------------')
+      #  print ('   Version:', version)
+      #  print ('    Header:', bytes(header).hex())
+      #  print ('    Scrypt:', bytes(reversed(cls.HEADER_HASH(header))).hex())
+      #  print (' DHash 256:', bytes(reversed(double_sha256(header))).hex())
+      #  print ('     Quark:', bytes(reversed(quark_hash.getPoWHash(header))).hex())
+
+        if version >= 5:
+            return super().header_hash(header)
+           # return cls.HEADER_HASH(header)
+        else:
+#            import quark_hash
+            return quark_hash.getPoWHash(header)
 
 class PivxTestnet(Pivx):
     SHORTNAME = "tPIVX"
